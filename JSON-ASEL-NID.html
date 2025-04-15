@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en"> 
+
+<head>
+	<meta charset="UTF-8">
+	<title>AESL Extractor (Login + JSON + AnswerKey)</title>
+
+	<style>
+		body {
+			font-family: 'Segoe UI', sans-serif;
+			background: linear-gradient(135deg, #0f2020, #203a40, #2c5360);
+			margin: 0;
+			padding: 0;
+			text-align: center;
+			color: white;
+			/* Changes all text to white */
+		}
+	
+		.login-box,
+		.container {
+			background: linear-gradient(270deg, #2c5364, #0f2027);
+			/* Lighter container background */
+			padding: 30px;
+			margin: 50px auto;
+			max-width: 600px;
+			border-radius: 10px;
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+		}
+	
+		input[type="text"],
+		input[type="password"],
+		input[type="file"] {
+			padding: 10px;
+			width: 80%;
+			margin: 10px auto;
+			border: 1px solid #ccc;
+			border-radius: 8px;
+			font-size: 16px;
+			color: black;
+			/* Changes text color inside input to black for better visibility */
+			background-color: #f4f4f4;
+			/* Light background for inputs */
+		}
+	
+		button {
+			padding: 10px 20px;
+			margin: 10px;
+			border-radius: 8px;
+			border: none;
+			cursor: pointer;
+			font-weight: bold;
+			color: white;
+			font-size: 16px;
+		}
+	
+		.blue {
+			background: #007bff;
+		}
+	
+		.green {
+			background: #28a745;
+		}
+	
+		.blue:hover {
+			background: #0056b3;
+		}
+	
+		.green:hover {
+			background: #1e7e34;
+		}
+	
+		#status {
+			margin-top: 10px;
+			font-weight: bold;
+		}
+	
+		table {
+			width: 90%;
+			margin: 20px auto;
+			border-collapse: collapse;
+			background: white;
+		}
+	
+		th,
+		td {
+			border: 1px solid #ccc;
+			padding: 8px;
+			font-size: 15px;
+			color: black;
+			/* Changes text color inside table to black */
+		}
+	
+		th {
+			background: #1a73e8;
+			color: white;
+		}
+	
+		.hidden {
+			display: none;
+		}
+	
+		/* 📱 Mobile-Friendly Fixes */
+		@media (max-width: 650px) {
+	
+			.login-box,
+			.container {
+				margin: 20px 10px;
+				padding: 20px 15px;
+			}
+	
+			input[type="text"],
+			input[type="password"],
+			input[type="file"],
+			button {
+				width: 90%;
+				font-size: 14px;
+				padding: 10px;
+				margin: 8px 0;
+			}
+	
+			button {
+				font-size: 14px;
+			}
+	
+			p,
+			h2,
+			h3 {
+				font-size: 16px;
+			}
+	
+			code {
+				font-size: 13px;
+			}
+	
+			table th,
+			table td {
+				font-size: 14px;
+				padding: 6px;
+			}
+		}
+	</style>
+
+</head>
+
+<body>
+
+	<div id="loginSection" class="login-box">
+		<h2>🔐 Login to Continue</h2>
+		<input type="text" id="username" placeholder="Username"><br>
+		<input type="password" id="password" placeholder="Password"><br>
+		<button class="blue" onclick="checkLogin()">Login</button>
+		<p id="loginStatus"></p>
+	</div>
+
+	<div id="appSection" class="container hidden">
+		<h2>AESL JSON + Answer Key Extractor</h2>
+	  <h2>PC Recommended</h2>
+		<input type="text" id="testId" placeholder="Enter 10-digit Test ID"><br>
+		<button class="blue" onclick="downloadTest()">Download Test JSON</button>
+		<button class="green" onclick="downloadSols()">Get Solutions JSON</button>
+		<p id="status"></p>
+
+		<hr>
+
+		<h3>📤 Extract Answers from JSON</h3>
+		<p><b>Step 1:</b> Upload <code>getquizresults.json</code></p>
+		<input type="file" id="solsFile" accept=".json"><br>
+		<p><b>Step 2:</b> Upload <code>test JSON file</code></p>
+		<input type="file" id="testFile" accept=".json"><br>
+		<button class="green" onclick="processFiles()">📑 Generate Answer Key</button>
+	</div>
+
+	<script>
+		const users = [
+      { username: "EKR", password: "9752" },
+      { username: "test", password: "pass" }
+    ];
+
+    function checkLogin() {
+      const u = document.getElementById("username").value.trim();
+      const p = document.getElementById("password").value.trim();
+      const status = document.getElementById("loginStatus");
+
+      const found = users.find(user => user.username === u && user.password === p);
+      if (found) {
+        document.getElementById("loginSection").style.display = "none";
+        document.getElementById("appSection").classList.remove("hidden");
+      } else {
+        status.textContent = "❌ Invalid credentials!";
+      }
+    }
+
+    async function downloadTest() {
+      const testId = document.getElementById("testId").value.trim();
+      const status = document.getElementById("status");
+      if (!/^\d{9,10}$/.test(testId)) return status.textContent = "❌ Enter valid Test ID.";
+
+      status.textContent = "⏳ Fetching test...";
+      try {
+        const meta = await fetch(`https://learn.aakashitutor.com/api/getquestionsforquiz?nid=${testId}&noredirect=true`);
+        const metaJson = await meta.json();
+        const url = metaJson.url?.replace(/\\/g, "").replace("\\u0026", "&");
+        if (!url) return status.textContent = "❌ No download link found.";
+
+        const blob = await (await fetch(url)).blob();
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `${testId}.json`;
+        link.click();
+        status.textContent = "✅ Downloaded test JSON.";
+      } catch (err) {
+        status.textContent = "❌ Failed.";
+      }
+    }
+
+    function downloadSols() {
+      const testId = document.getElementById("testId").value.trim();
+      const status = document.getElementById("status");
+      if (!/^\d{9,10}$/.test(testId)) return status.textContent = "❌ Enter valid Test ID.";
+
+      const url = `https://learn.aakashitutor.com/api/getquizresults?quiz_id=${testId}`;
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "sols.json";
+      a.click();
+      status.textContent = "✅ Redirected to download!";
+    }
+
+    function readJSONFile(file, callback) {
+      const reader = new FileReader();
+      reader.onload = () => callback(JSON.parse(reader.result));
+      reader.readAsText(file);
+    }
+
+    function processFiles() {
+      const solsFile = document.getElementById("solsFile").files[0];
+      const testFile = document.getElementById("testFile").files[0];
+      const title = "AESL Test Answer Key";
+
+      if (!solsFile || !testFile) return alert("⚠️ Upload both JSON files!");
+
+      readJSONFile(solsFile, sols => {
+        readJSONFile(testFile, test => {
+          const solutions = extractSolutions(sols);
+          generateAnswerKeyHTML(test, solutions, title);
+          alert("✅ Downloaded Answer Key!");
+        });
+      });
+    }
+
+    function extractSolutions(data) {
+      const out = [];
+      data.forEach(item => {
+        for (let key in item) {
+          if (item[key]?.question_result) {
+            out.push({ nid: item[key].question_result.nid, answer: item[key].question_result.answer });
+          }
+        }
+      });
+      return out;
+    }
+
+	function generateAnswerKeyHTML(questions, solutions, title) {
+	const answerKey = [];
+	let count = 0;
+	for (let sol of solutions) {
+	if (count >= 180) break;
+	const q = questions.find(q => q.nid === sol.nid);
+	if (!q) continue;
+	let opt = "No option", ans = "Answer not found";
+	if (Array.isArray(q.alternatives)) {
+	const alt = q.alternatives.find(a => sol.answer.includes(a.id));
+	if (alt) {
+	opt = `${q.alternatives.indexOf(alt) + 1})`;
+	ans = alt.answer;
+	}
+	} else {
+	ans = Array.isArray(sol.answer) ? sol.answer.join(", ") : sol.answer;
+	}
+	answerKey.push(`<tr>
+		<td>Q${count + 1}</td>
+		<td>${opt}</td>
+		<td>${ans}</td>
+	</tr>`);
+	count++;
+	}
+	
+	const testId = document.getElementById("testFile").files[0].name.replace(".json", "");
+	const html = `
+	<html>
+	
+	<head>
+		<title>${title}</title>
+		<style>
+			body {
+				font-family: Arial;
+				text-align: center;
+				padding: 20px;
+			}
+	
+			table {
+				width: 90%;
+				margin: auto;
+				border-collapse: collapse;
+				background: white;
+			}
+	
+			th,
+			td {
+				border: 1px solid #ccc;
+				padding: 8px;
+			}
+	
+			th {
+				background: #1a73e8;
+				color: white;
+			}
+		</style>
+	</head>
+	
+	<body>
+		<h1>${title}</h1>
+		<table>
+			<tr>
+				<th>Q. No</th>
+				<th>Correct Option</th>
+				<th>Correct Answer</th>
+			</tr>
+			${answerKey.join("")}
+		</table>
+	</body>
+	
+	</html>`;
+	
+	// Download the answer key as an HTML file
+	downloadFile(html, `${testId}_answer_key.html`);
+	
+	// Display the answer key below the input section
+	const answerKeyContainer = document.createElement('div');
+	answerKeyContainer.innerHTML = html;
+	answerKeyContainer.style.marginTop = '20px';
+	document.getElementById('appSection').appendChild(answerKeyContainer);
+	}
+
+    function downloadFile(content, filename) {
+      const blob = new Blob([content], { type: "text/html" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      link.click();
+    }
+	</script>
+
+</body>
+
+</html>
